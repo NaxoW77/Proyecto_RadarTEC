@@ -24,8 +24,11 @@ class Radar:
         self.axRad.set_ylim(0, 50)
         
         self.axRad.set_xlim(0, np.pi)
-        self.axRad.set_xticks(np.linspace(0, np.pi, 7))
-        self.axRad.set_xticklabels(['0°', '30°', '60°', '90°', '120°', '150°', '180°'], color='green')
+        # Se cambiaron las etiquetas para que ahora vayan de 20 en 20 grados
+        ticks_deg = np.arange(0, 181, 20)
+        ticks = np.pi - np.deg2rad(ticks_deg)
+        self.axRad.set_xticks(ticks)
+        self.axRad.set_xticklabels([f"{d}°" for d in ticks_deg], color='green')
         
         self.axRad.set_yticklabels([]) 
         self.axRad.set_yticks([10, 20, 30, 40, 50])
@@ -92,7 +95,7 @@ class Radar:
                         self.points_y = []
 
                     if 0 <= dist <= 50:
-                        rad = np.deg2rad(angle)
+                        rad = np.pi - np.deg2rad(angle)
                         self.points_x.append(rad)
                         self.points_y.append(dist)
                         self.update_plot()
