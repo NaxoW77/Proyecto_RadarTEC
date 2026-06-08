@@ -6,15 +6,7 @@ const int servoPin = 7;
 const int ledPin = 4;
 const int buzzerPin = 11;
 
-unsigned long prevServoMillis = 0;
-unsigned long prevSensorMillis = 0;
-unsigned long prevLedOnMillis = 0;
-unsigned long prevLedOffMillis = 0;
-
-const int servoInterval = 3;
-const int sensorInterval = 40;
-const int ledOnInterval = 500;
-const int ledOffInterval = 1000;
+int step = 0;
 
 Servo myServo;
 int servoPos = 0;
@@ -28,37 +20,34 @@ void setup() {
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
-
-  if (currentMillis - prevServoMillis >= servoInterval) {
-    prevServoMillis = currentMillis;
-    
-    servoPos += servoDirection;
-    myServo.write(servoPos);
-
-    if (servoPos <= 0 || servoPos >= 180) {
-      servoDirection *= -1;
-    }
-  }
-
-  if (currentMillis - prevSensorMillis >= sensorInterval) {
-    prevSensorMillis = currentMillis;
+  while(step <= 180){
+    myServo.write(step);
+    delay(50);
     readDistance();
-  }
 
-  if (currentMillis - prevLedOnMillis >= ledOnInterval) {
-    prevLedOnMillis = currentMillis;
-    analogWrite(ledPin, 255);
-  }
+    if(step < 45){
+      analogWrite(ledPin, 255);
+    }
+    else if(step < 90){
+      analogWrite(ledPin, 0);
+    }
+    else if(step < 135){
+      analogWrite(ledPin, 255);
+    }
+    else if(step < 180){
+      analogWrite(ledPin, 0);
+    }
 
-  if (currentMillis - prevLedOffMillis >= ledOffInterval) {
-    prevLedOffMillis = currentMillis;
-    analogWrite(ledPin, 0);
-  }
+    delay(250);
+    step+=20;
 
-  if (currentMillis > 10000){
-    currentMillis = 0;
   }
+  step = 0;
+  myServo.write(step);
+  analogWrite(ledPin, 255);
+  delay(500);
+  analogWrite(ledPin, 0);
+  delay(500);
 }
 
 void readDistance() {
@@ -74,10 +63,10 @@ void readDistance() {
   Serial.print("Distance: ");
   Serial.print(distance);
   if(distance < 50 && distance > 0){
-    tone(buzzerPin, servoPos*75);
+    tone(buzzerPin, step*75);
     delay(5);
   }
   noTone(buzzerPin);
   Serial.print(" cm | Angle: ");
-  Serial.println(servoPos);
+  Serial.println(step);
 }
