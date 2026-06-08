@@ -1,0 +1,52 @@
+Se tomaron datos de 4 objetos, todos son valores aproximados, incluyendo las predicciones.
+
+####### Las posiciones son interpretadas de la siguiente forma:
+Si hay solo UN punto a una distancia y rotación específica, esa será la posición absoluta (100% preciso)
+Si hay DOS puntos a una distancia y rotación, se promediarán grados y distancias para encontrar un punto medio entre ambas mediciones (50% preciso)
+Si hay TRES o más puntos, se promediará de la misma forma para llegar al centro de toda la medida (Poco preciso)
+
+Por ejemplo si tengo dos mediciones, ambas a 50cm pero una a 70° y otra a 80°, la posición final será de 75° a 50cm
+Si por otro lado tengo tres medidas, en 70°, 80° y 90°, a 10cm, 15cm y 20cm, la posición final se dará por el promedio entre los grados y el promedio entre los centímetros, en este caso 80° a 15cm (puntos medios), pero puede variar si las mediciones no son lineales (los pasos son desiguales)
+
+####### Las predicciones son de la siguiente forma:
+En base al documento se deben utilizar fórmulas de gravedad y transformaciones polares, pero el
+objeto final deberá estar a una distancia y rotación igual a la dada entre el punto inicial y a donde se movió.
+
+En estas notas utilicé el método de obtener la distacia entre el punto inicial y el movimiento, y ambos grados, y luego se la sumé/resté al último movimiento para obtener el siguiente. Desconozco si la fórmula propuesta en el proyecto funciona de la misma forma por la medida polar.
+
+
+####### Estas son algunas medidas obtenidas (Véase las imágenes) e interpretadas aproximadamente:
+
+Objeto 1 (Movimiento hacia la derecha):
+-Inicia:
+	30° a una distancia de 32.5cm
+-Se mueve a:
+	90° a una distancia de 32cm
+-Predicción:
+	Se moverá a 120° a 31.5cm
+
+Objeto 2 (Acercándose):
+-Inicia:
+	70° a 38cm
+-Se mueve a:
+	70° a 28.5cm
+-Predicción:
+	70° a 19cm
+
+Objeto 3 (Acercándose, desigual):
+-Inicia:
+	110° a 33cm
+-Se mueve
+	110° a 21cm
+-Predicción:
+	110° a 9cm
+
+Objeto 4 (Movimiento hacia la izquierda, alejándose):
+-Inicia:
+	130° a 15cm
+-Se mueve: 
+	90° a 25cm
+-Predicción:
+	50° a 35cm
+
+
