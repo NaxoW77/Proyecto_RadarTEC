@@ -90,7 +90,7 @@ class Radar:
                     dist = int(match.group(1))
                     angle = int(match.group(2))
 
-                    if angle <= 10 or angle >= 170:
+                    if angle == 0:
                         self.points_x = []
                         self.points_y = []
 
