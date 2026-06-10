@@ -1,3 +1,6 @@
+
+
+
 //
 //   Código simple para ubicar el servo
 //
@@ -5,6 +8,8 @@
 //   una posición específica durante
 //   el ensamblado de las piezas.
 //
+
+
 
 // Imports necesarios
 #include <Servo.h>

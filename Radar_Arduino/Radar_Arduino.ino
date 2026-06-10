@@ -1,3 +1,6 @@
+
+
+
 //
 //   Código para la función del Arduino
 //
@@ -5,6 +8,8 @@
 //   y moverse cada ciertos tiempos,
 //   además de avisar inicio y  fin de barridos.
 //
+
+
 
 // Imports necesarios
 #include <Servo.h>
