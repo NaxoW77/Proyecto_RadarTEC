@@ -6,6 +6,7 @@ import tkinter as tk
 from threading import Thread
 import numpy as np
 from math import sin, cos
+import time
 
 SERIAL_PORT = 'COM7' 
 BAUD_RATE = 9600
@@ -24,6 +25,7 @@ class Radar:
         self.axRad.set_ylim(0, 50)
         
         self.axRad.set_xlim(0, np.pi)
+        
         # Se cambiaron las etiquetas para que ahora vayan de 20 en 20 grados
         ticks_deg = np.arange(0, 181, 20)
         ticks = np.pi - np.deg2rad(ticks_deg)
@@ -44,8 +46,31 @@ class Radar:
         self.axRad.text(-np.pi/2, 2, '0', ha='center', va='top', color='green', fontsize=9)
         
         self.line, = self.axRad.plot([], [], 'ro', markersize=5)
+        
+        # Tiempo por cada barrido
+        self.time = 0
+        self.time_counter = 0
+        self.time_start = time.time()
+        self.counting = False
+        self.time_exceeded = False
+        
+        # Puntos actuales
         self.points_x = []
         self.points_y = []
+        
+        # Puntos para las posiciones anteriores
+        self.prevPoints_x = []
+        self.prevPoints_y = []
+        
+        # Posiciones de los objetos (Original y trasladado)
+        self.objects_pos0 = []
+        self.objects_pos1 = []
+        
+        # Predicciones
+        self.objects_predict = []
+        
+        # Texto para mostrar el tiempo
+        self.time_text = self.figRad.text(0.02, 0.98, '', transform=self.figRad.transFigure, color='green', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
 
         self.canvasRad = FigureCanvasTkAgg(self.figRad, master=root)
         self.canvasRad.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
@@ -74,44 +99,95 @@ class Radar:
         self.running = True
         self.thread = Thread(target=self.read_serial, daemon=True)
         self.thread.start()
+        
+        # Inicia el intervalo del contador
+        self.update_time_display()
 
     def read_serial(self):
-        try:
-            ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
-            while self.running:
-                raw_data = ser.readline()
-                if not raw_data:
-                    continue
-                
-                line = raw_data.decode('utf-8', errors='ignore').strip()
-                match = re.search(r"Distance:\s*(\d+)\s*cm\s*\|\s*Angle:\s*(\d+)", line)
-                
-                if match:
-                    dist = int(match.group(1))
-                    angle = int(match.group(2))
+        while self.running:
+            try:
+                ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
+                while self.running:
+                    
+                    # Revisar si se ha excedido el tiempo
+                    if self.time_exceeded:
+                        self.reset_connection()
+                        break
+                    
+                    raw_data = ser.readline()
+                    if not raw_data:
+                        continue
+                    
+                    line = raw_data.decode('utf-8', errors='ignore').strip()
+                    match = re.search(r"Distance:\s*(\d+)\s*cm\s*\|\s*Angle:\s*(\d+)", line)
+                    match2 = re.search(r"Time:\s*(\d+)\s*s", line)
+                    
+                    if match2:
+                        self.time = int(match2.group(1))
+                        
+                        if self.time == 0:
+                            # Empezar a contar
+                            self.counting = True
+                            self.time_start = time.time()
+                        elif self.time == 1:
+                            # Detener el contador
+                            self.counting = False
+                            self.points_x = []
+                            self.points_y = []
+                            self.update_plot()
+                    
+                    if match:
+                        
+                        if self.counting == False:
+                            self.time_exceeded = True
+                        
+                        dist = int(match.group(1))
+                        angle = int(match.group(2))
 
-                    if angle == 0:
-                        self.points_x = []
-                        self.points_y = []
+                        if 0 <= dist <= 50:
+                            rad = np.pi - np.deg2rad(angle)
+                            self.points_x.append(rad)
+                            self.points_y.append(dist)
+                            self.update_plot()
+                
+                ser.close()
+            except Exception as e:
+                print(f"Error: {e}")
+                time.sleep(1)
 
-                    if 0 <= dist <= 50:
-                        rad = np.pi - np.deg2rad(angle)
-                        self.points_x.append(rad)
-                        self.points_y.append(dist)
-                        self.update_plot()
-            
-            ser.close()
-        except Exception as e:
-            print(f"Error: {e}")
+    def reset_connection(self):
+        print("Error: Tiempo agotado")
+        self.time_exceeded = False
+        self.counting = False
+        self.points_x = []
+        self.points_y = []
+        self.prevPoints_x = []
+        self.prevPoints_y = []
+        self.time_text.set_text("Error: Tiempo agotado")
+        self.update_plot()
 
     def update_plot(self):
         try:
             self.line.set_data(self.points_x, self.points_y)
             self.canvasRad.draw_idle()
-
-
         except:
             pass
+    
+    def update_time_display(self):
+        try:
+            if self.counting:
+                elapsed = time.time() - self.time_start
+                self.time_text.set_text(f"t = {elapsed:.3f}s")
+                self.canvasRad.draw_idle()
+                
+                # Revisar si se ha excedido el tiempo
+                if elapsed > 3.150:
+                    self.time_exceeded = True
+                
+        except:
+            pass
+        
+        self.root.after(50, self.update_time_display)
     
     def parable(self, pol1, pol2, time, const=9.8):
 
