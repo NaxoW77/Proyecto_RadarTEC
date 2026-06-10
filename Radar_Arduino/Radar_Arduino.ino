@@ -20,6 +20,7 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("Time: 0s");
   while(step <= 180){
     myServo.write(step);
     delay(50);
@@ -43,11 +44,11 @@ void loop() {
 
   }
   step = 0;
+  Serial.println("Time: 1s");
+  delay(50);
   myServo.write(step);
   analogWrite(ledPin, 255);
-  delay(500);
-  analogWrite(ledPin, 0);
-  delay(500);
+  delay(250);
 }
 
 void readDistance() {
