@@ -31,7 +31,7 @@ import numpy as np
 import time
 
 # Configuración de la comunicación serial
-SERIAL_PORT = 'COM7' 
+SERIAL_PORT = 'COM3' 
 BAUD_RATE = 9600
 
 # Clase principal
@@ -49,6 +49,7 @@ class Radar:
         self.axRad.set_facecolor('black')
         self.axRad.set_ylim(0, 50)
         self.axRad.set_xlim(0, np.pi)
+        self.axRad.spines['polar'].set_color('green')
         
         self.canvasRad = FigureCanvasTkAgg(self.figRad, master=root)
         self.canvasRad.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
@@ -111,8 +112,8 @@ class Radar:
         self.axCart.plot(color="green")
         self.axCart.grid(color="green")
         self.axCart.set_facecolor('black')
-        self.axCart.set_xlabel('Tiempo (x)', color='green')
-        self.axCart.set_ylabel('Profundidad (y)', color='green')
+        self.axCart.set_xlabel('Posición (x)', color='green')
+        self.axCart.set_ylabel('Posición (y)', color='green')
         self.axCart.tick_params('both', colors='green')
         self.axCart.set_title('Predicción Parabólica', color='green')
         self.axCart.spines['top'].set_color('green')
@@ -120,9 +121,19 @@ class Radar:
         self.axCart.spines['right'].set_color('green')
         self.axCart.spines['left'].set_color('green')
 
+        #Variables para el gráfico cartesiano
+
+        self.axCartPos1 = (0, 0)
+        self.axCartPos2 = (0, 0)
+        self.axCartX = np.arange(1, 50, 0.01)
+        self.axCartY = (1*self.axCartX**2) + (1*self.axCartX) +1 #Forma cuadrática
+
         self.canvasCart = FigureCanvasTkAgg(self.figCart, master=root)
         self.canvasCart.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
         self.figCart.set_facecolor("black")
+        self.axCart.plot(self.axCartX, self.axCartY, color='green')
+        self.axCart.set_ylim(0,20)
+        self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
 
         # Hilo para la comunicación serial
         self.running = True
@@ -131,6 +142,14 @@ class Radar:
         
         # Inicia el intervalo del contador
         self.update_time_display()
+
+
+    def METODOPRUEBA(self):
+        while self.running:
+
+            
+
+            time.sleep(1)
 
     # Función para la comunicación serial
     def read_serial(self):
@@ -222,6 +241,11 @@ class Radar:
         try:
             self.line.set_data(self.points_x, self.points_y)
             self.canvasRad.draw_idle()
+
+            #Gráfico cartesiano
+            self.axCart.plot(self.axCartX, self.axCartY, color='green')
+            self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
+            
         except:
             pass
     
@@ -270,6 +294,20 @@ class Radar:
         a = - (const * (time**2)) / (2 * ((x2 - x1)**2))
         b = (y2 - y1 + 0.5 * const * (time**2)) / (x2 - x1) - 2*a*x1
         c = y1 - a * (x1**2) - b * x1
+
+        #rangeX representa el intérvalo con el que se trabaja, el rango de x1 a x2.
+        #Resto y sumo 1 para mejor visualización del gráfico
+        x_min = min(x1, x2) - 1
+        x_max = max(x1, x2) + 1
+
+        rangeX = np.arange(x_min, x_max, 0.01)
+
+        #Cambiar variables del gráfico
+        self.axCartX = rangeX
+        self.axCartY = (a*rangeX**2) + (b*rangeX) + c
+
+        self.axCartPos1 = (x1, y1)
+        self.axCartPos2 = (x2, y2)
         
     # Función para cerrar adecuadamente
     def on_close(self):
