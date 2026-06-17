@@ -31,7 +31,7 @@ import numpy as np
 import time
 
 # Configuración de la comunicación serial
-SERIAL_PORT = 'COM3' 
+SERIAL_PORT = 'COM7' 
 BAUD_RATE = 9600
 
 # Clase principal
