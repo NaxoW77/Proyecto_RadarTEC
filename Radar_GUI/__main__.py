@@ -31,12 +31,13 @@ import numpy as np
 import time
 
 # Configuración de la comunicación serial
-SERIAL_PORT = 'COM7' 
+SERIAL_PORT = 'COM5' 
 BAUD_RATE = 9600
 
 # Clase principal
 class Radar:
     def __init__(self, root):
+        self.test = 1
 
         # Se crea la interfaz
         self.root = root
@@ -81,6 +82,8 @@ class Radar:
         # Variables de tiempo
         self.time = 0
         self.time_start = time.time()
+        self.points_time = []
+        self.prevPoints_time = []
         
         # Estados de tiempo
         self.counting = False
@@ -89,10 +92,14 @@ class Radar:
         # Puntos actuales
         self.points_x = []
         self.points_y = []
+
+        # Puntos actuales, sin formato.
+        self.points_angle = []
+        self.points_dist = []
         
         # Puntos para las posiciones anteriores
-        self.prevPoints_x = []
-        self.prevPoints_y = []
+        self.prevPoints_angle = []
+        self.prevPoints_dist = []
         
         # Posiciones de los objetos (Original y trasladado)
         self.objects_pos0 = []
@@ -176,20 +183,35 @@ class Radar:
                     match = re.search(r"Distance:\s*(\d+)\s*cm\s*\|\s*Angle:\s*(\d+)", line)
                     match2 = re.search(r"Time:\s*(\d+)\s*s", line)
                     
+
                     # Coincidencia del tiempo
                     if match2:
                         self.time = int(match2.group(1))
-                        
+                
+
                         if self.time == 0:
                             # Empezar a contar
                             self.counting = True
                             self.time_start = time.time()
+
+                        
                             
                         elif self.time == 1:
-                            # Detener el contador
+                            # Detener el contador                            
+                        
                             self.counting = False
                             self.points_x = []
                             self.points_y = []
+                            
+                            self.prevPoints_angle = self.points_angle
+                            self.prevPoints_dist = self.points_dist
+                            self.prevPoints_time = self.points_time
+                            self.points_angle = []
+                            self.points_dist = []
+                            self.points_time = []
+
+                            
+
                             self.update_plot()
                     
                     # Coincidencia de los datos
@@ -202,13 +224,40 @@ class Radar:
                         # Guardar los datos
                         dist = int(match.group(1))
                         angle = int(match.group(2))
+                        
 
                         # Límites de distancia
                         if 0 <= dist <= 50:
                             rad = np.pi - np.deg2rad(angle)
                             self.points_x.append(rad)
                             self.points_y.append(dist)
+
+                            self.points_angle.append(angle)
+                            self.points_dist.append(dist)
+                            self.points_time.append(time.time() - self.time_start)
+
+                            self.newObj()
+
+
+                            #Obtener un objeto a partir del promedio de puntos sucesivos
+                            #if len(self.points_x) and len(self.points_y) >= 2:
+
+                            
+
+
+                            #print("\n---\n")
+                            #print(self.points_angle)
+                            #print(self.points_dist)
+
+                            
+
+
+
+
+                            
+
                             self.update_plot()
+                            
                 
                 ser.close()
                 
@@ -231,8 +280,12 @@ class Radar:
         self.counting = False
         self.points_x = []
         self.points_y = []
-        self.prevPoints_x = []
-        self.prevPoints_y = []
+        self.points_angle = []
+        self.points_dist = []
+        self.prevPoints_angle = []
+        self.prevPoints_dist = []
+        self.points_time = []
+        self.prevPoints_time = []
         self.time_text.set_text("Error: Tiempo agotado")
         self.update_plot()
 
@@ -308,6 +361,60 @@ class Radar:
 
         self.axCartPos1 = (x1, y1)
         self.axCartPos2 = (x2, y2)
+
+    def newObj(self):
+        # Lista para almacenar los objetos detectados
+        print("\n\n\n")
+        pointData = []
+
+        # Enlistar los datos
+        for i in range(len(self.points_angle)):
+            angle = self.points_angle[i]
+            dist = self.points_dist[i]
+            tim = self.points_time[i]
+            pointData.append([angle, dist, tim])
+
+        #Agrupar los puntos por diferencia de angulo de 20 grados
+        objects = []
+        current_object = []
+        for i in range(len(pointData)):
+            if not current_object:
+                current_object.append(pointData[i])
+            else:
+                if abs(pointData[i][0] - current_object[-1][0]) <= 20:
+                    current_object.append(pointData[i])
+
+                    if i == len(pointData) - 1:
+                        objects.append(current_object)
+
+                else:
+                    objects.append(current_object)
+                    current_object = [pointData[i]]
+
+        #Calcular promedio para cada punto previamente agrupado
+
+        promObject = []
+
+        for object in objects:
+            sum_ang = 0
+            sum_dist = 0
+            sum_tim = 0
+            for i in range(len(object)):
+                sum_ang += object[i][0]
+                sum_dist += object[i][1]
+                sum_tim += object[i][2]
+            prom_ang = sum_ang/len(object)
+            prom_dist = sum_dist/len(object)
+            prom_tim = sum_tim/len(object)
+
+            promObject.append([prom_ang, prom_dist, prom_tim])
+
+        
+
+
+
+        
+        
         
     # Función para cerrar adecuadamente
     def on_close(self):
