@@ -26,7 +26,7 @@ import tkinter as tk
 from threading import Thread
 
 # Librerías para cálculos
-from math import sin, cos
+from math import sin, cos, sqrt, degrees, atan2
 import numpy as np
 import time
 
@@ -100,6 +100,10 @@ class Radar:
         # Puntos para las posiciones anteriores
         self.prevPoints_angle = []
         self.prevPoints_dist = []
+
+        # Puntos de prediccion (Con formato polar)
+        self.predictPoints_x = []
+        self.predictPoints_y = []
         
         # Posiciones de los objetos (Original y trasladado)
         self.objects_pos0 = []
@@ -197,7 +201,10 @@ class Radar:
                         
                             
                         elif self.time == 1:
-                            # Detener el contador                            
+                            # Detener el contador
+
+                            print(self.objects_pos1)
+                            print(self.objects_pos0)
                         
                             self.counting = False
                             self.points_x = []
@@ -210,7 +217,8 @@ class Radar:
                             self.points_dist = []
                             self.points_time = []
 
-                            
+                            self.objects_pos0 = self.objects_pos1
+                            self.objects_pos1 = []
 
                             self.update_plot()
                     
@@ -236,25 +244,18 @@ class Radar:
                             self.points_dist.append(dist)
                             self.points_time.append(time.time() - self.time_start)
 
-                            self.newObj()
+                            self.objects_pos1 = self.calcObject()
 
+                            if len(self.objects_pos1) > 1:
+                                # Llamar a la funciion parabola
+                                objDist0 = self.objects_pos1[-2][1]
+                                objAng0 = self.objects_pos1[-2][0]
+                                objDist1 = self.objects_pos1[-1][1]
+                                objAng1 = self.objects_pos1[-1][0]
 
-                            #Obtener un objeto a partir del promedio de puntos sucesivos
-                            #if len(self.points_x) and len(self.points_y) >= 2:
+                                objTime = self.objects_pos1[-2][2] - self.objects_pos1[-1][2]
 
-                            
-
-
-                            #print("\n---\n")
-                            #print(self.points_angle)
-                            #print(self.points_dist)
-
-                            
-
-
-
-
-                            
+                                self.parable((objDist0, objAng0), (objDist1, objAng1), objTime)
 
                             self.update_plot()
                             
@@ -292,12 +293,34 @@ class Radar:
     # Actualizar los gráficos
     def update_plot(self):
         try:
+            #Gráfico polar
             self.line.set_data(self.points_x, self.points_y)
             self.canvasRad.draw_idle()
 
             #Gráfico cartesiano
+
+            #Borrar datos del grafico cartesiano antes de actualizarlo
+            self.axCart.cla()
+            #Reconfigurar el gráfico después de limpiarlo
+            self.axCart.grid(color="green")
+            self.axCart.set_facecolor('black')
+            self.axCart.set_xlabel('Posición (x)', color='green')
+            self.axCart.set_ylabel('Posición (y)', color='green')
+            self.axCart.tick_params('both', colors='green')
+            self.axCart.set_title('Predicción Parabólica', color='green')
+
+            #Graficar la parábola y los puntos de detección
             self.axCart.plot(self.axCartX, self.axCartY, color='green')
             self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
+            #Visualizar el gráfico con límites dinámicos según los puntos detectados
+            self.axCart.set_ylim(0, max(self.axCartPos1[1], self.axCartPos2[1]) + 5)
+            self.axCart.set_xlim(0, max(self.axCartPos1[0], self.axCartPos2[0]) + 5)
+            
+            self.canvasCart.draw_idle()
+
+            # self.axCart.plot(self.axCartX, self.axCartY, color='green')
+            # self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
+            # self.canvasCart.draw_idle()
             
         except:
             pass
@@ -336,11 +359,11 @@ class Radar:
         #Transformar las coordenadas polares en cartesianas, y asignar cada valor 'x' y 'y'
         #por separado
 
-        x1 = pol1[0]*cos(pol1[1])
-        x2 = pol2[0]*cos(pol2[1])
+        x1 = pol1[0]*cos(180-pol1[1])
+        x2 = pol2[0]*cos(180-pol2[1])
 
-        y1 = pol1[0]*sin(pol1[1])
-        y2 = pol2[0]*sin(pol2[1])
+        y1 = pol1[0]*sin(180-pol1[1])
+        y2 = pol2[0]*sin(180-pol2[1])
         
         #Calcular coeficientes de la variable independiente
 
@@ -362,12 +385,12 @@ class Radar:
         self.axCartPos1 = (x1, y1)
         self.axCartPos2 = (x2, y2)
 
-    def newObj(self):
+    def calcObject(self):
         # Lista para almacenar los objetos detectados
-        print("\n\n\n")
         pointData = []
 
         # Enlistar los datos
+
         for i in range(len(self.points_angle)):
             angle = self.points_angle[i]
             dist = self.points_dist[i]
@@ -409,6 +432,55 @@ class Radar:
 
             promObject.append([prom_ang, prom_dist, prom_tim])
 
+        return promObject
+
+        
+        # print(promObject)
+        # print(self.points_angle)
+        # print(self.points_dist)
+        # print(self.points_time)
+    
+    def prediction(self):
+        """Prepara los puntos de dos barridos para predecir mediante MRU, los almacena en self.predictPoints"""
+
+        if self.objects_pos0 == []:
+            return
+        
+        for i in len(self.objects_pos0):
+            if len(self.objects_pos1) < i:
+                continue
+            #Objetos en uso
+            pos0 = self.objects_pos0[i]
+            pos1 = self.objects_pos1[i]
+
+            # Definición y corrección de cartesianas
+            x1 = pos0[1]*cos(180-pos0[0])
+            x2 = pos1[1]*cos(180-pos1[0])
+
+            y1 = pos0[1]*sin(180-pos0[0])
+            y2 = pos1[1]*sin(180-pos1[0])
+
+            # Predicción de coordenada cartesiana
+            # Busca un punto en la misma cantidad de tiempo entre pos0 y pos1, por lo que se cancelan los tiempos
+
+            x3 = 2*x2 - x1
+            y3 = 2*y2 - y1
+
+            # Conversión de x3 y y3 a coordenadas polares
+
+            dist = sqrt(x3**2 + y3**2)
+            angle = degrees(atan2(y3, x3))
+
+            # Mantener una distancia maxima de 50
+            if dist > 50:
+                dist = 50
+            
+            # Conversión al formato polar de la GUI
+
+            rad = np.pi - np.deg2rad(angle)
+            self.predictPoints_x.append(rad)
+            self.predictPoints_y.append(dist)
+
         
 
 
@@ -424,6 +496,7 @@ class Radar:
 
 # Clase principal
 if __name__ == "__main__":
+
     root = tk.Tk()
     app = Radar(root)
     root.protocol("WM_DELETE_WINDOW", app.on_close)
