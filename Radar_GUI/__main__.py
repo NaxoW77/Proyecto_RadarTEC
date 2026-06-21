@@ -101,6 +101,9 @@ class Radar:
         self.counting = False
         self.timeout = False
         
+        # Barrido actual
+        self.barrido_actual = 0
+        
         # Puntos actuales
         self.points_x = []
         self.points_y = []
@@ -128,9 +131,21 @@ class Radar:
         self.predictPoints_x = []
         self.predictPoints_y = []
 
+        # Textos sobre predicciones
+        self.predictLabels = []
         
         # Texto para mostrar el tiempo
         self.time_text = self.figRad.text(0.02, 0.98, '', transform=self.figRad.transFigure, color='green', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
+        
+        # Texto para mostrar la el barrido actual
+        self.barrido_text = self.figRad.text(0.02, 0.90, '', transform=self.figRad.transFigure, color='green', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
+        
+        # Texto para mostrar la simbología
+        self.symbol_text = self.figRad.text(0.045, 0.82, ': Detecciones\n: Objetos\n: Predicciones', transform=self.figRad.transFigure, color='green', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
+        
+        self.symbol1 = self.figRad.text(0.02, 0.823, '●', transform=self.figRad.transFigure, color='#ff0000', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
+        self.symbol2 = self.figRad.text(0.02, 0.781, '■', transform=self.figRad.transFigure, color='#00ff00', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
+        self.symbol3 = self.figRad.text(0.019, 0.735, '♦', transform=self.figRad.transFigure, color='#0000ff', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
         
         # Texto para mostrar errores
         self.error_text = self.figRad.text(0.02, 0.09, '', transform=self.figRad.transFigure, color='red', fontsize=12, fontweight='bold', verticalalignment='top', horizontalalignment='left')
@@ -196,17 +211,15 @@ class Radar:
 
     # Función para la comunicación serial
     def read_serial(self):
-        
         while self.running:
             try:
-                
                 # Puerto serial
                 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
                 while self.running:
                     
                     # Revisar si se ha excedido el tiempo
                     if self.timeout:
-                        self.reset_connection()
+                        self.root.after(0, self.reset_connection) # <- Hilo seguro
                         break
                     
                     # Leer el puerto serial
@@ -218,19 +231,16 @@ class Radar:
                     line = raw_data.decode('utf-8', errors='ignore').strip()
                     match = re.search(r"Distance:\s*(\d+)\s*cm\s*\|\s*Angle:\s*(\d+)", line)
                     match2 = re.search(r"Time:\s*(\d+)\s*s", line)
-                    
 
                     # Coincidencia del tiempo
                     if match2:
                         self.time = int(match2.group(1))
-                
 
                         if self.time == 0:
                             # Empezar a contar
+                            self.barrido_actual += 1
                             self.counting = True
                             self.time_start = time.time()
-
-                        
                             
                         elif self.time == 1:
                             # Detener el contador
@@ -251,17 +261,14 @@ class Radar:
 
                             self.prediction()                            
 
-                            
-                            
-
                             self.objects_pos0 = self.objects_pos1
                             self.objects_pos1 = []
 
-                            self.update_plot()
+                            # CAMBIO AQUÍ: Se programa la actualización en el hilo principal
+                            self.root.after(0, self.update_plot)
                     
                     # Coincidencia de los datos
                     if match:
-                        
                         # Revisar si se ha excedido el tiempo
                         if self.counting == False:
                             self.timeout = True
@@ -269,7 +276,6 @@ class Radar:
                         # Guardar los datos
                         dist = int(match.group(1))
                         angle = int(match.group(2))
-                        
 
                         # Límites de distancia
                         if 0 <= dist <= 50:
@@ -281,8 +287,6 @@ class Radar:
                             self.points_dist.append(dist)
                             self.points_time.append(time.time() - self.time_start)
 
-                            
-
                             self.objects_pos1 = self.calcObject()
 
                             objPos_x = []
@@ -292,12 +296,9 @@ class Radar:
                                 objPos_y.append(obj[1])
                             self.objectsPos_x = objPos_x
                             self.objectsPos_y = objPos_y
-                                
-                            
-                            
 
                             if len(self.objects_pos1) > 1:
-                                # Llamar a la funciion parabola
+                                # Llamar a la función parabola
                                 objDist0 = self.objects_pos1[-2][1]
                                 objAng0 = self.objects_pos1[-2][0]
                                 objDist1 = self.objects_pos1[-1][1]
@@ -306,20 +307,18 @@ class Radar:
                                 objTime = self.objects_pos1[-1][2] - self.objects_pos1[-2][2]
 
                                 self.parable((objDist0, objAng0), (objDist1, objAng1), objTime)
-                                print()
-                                print(self.axCartPos1)
-                                print(self.axCartPos2)
 
-                            self.update_plot()
+                            self.root.after(0, self.update_plot)
                             
-                
                 ser.close()
                 
             # En caso de error
             except Exception as e:
-                print(f"Error: {e}")
-                self.error_text.set_text(f"Error: El puerto serial dejó de responder.")
-                self.canvasRad.draw_idle()
+                print(f"Error en read_serial: {e}")
+                def handle_error():
+                    self.error_text.set_text(f"Error: El puerto serial dejó de responder.")
+                    self.canvasRad.draw_idle()
+                self.root.after(0, handle_error)
                 
                 # Detener los hilos
                 self.counting = False
@@ -353,19 +352,40 @@ class Radar:
     # Actualizar los gráficos
     def update_plot(self):
         try:
-            #Gráfico polar
+            # Gráfico polar
             self.line.set_data(self.points_x, self.points_y)
             self.object.set_data(self.objectsPos_x, self.objectsPos_y)
             self.predict.set_data(self.predictPoints_x, self.predictPoints_y)
             
+            # Eliminar textos antiguos de forma segura en el hilo principal
+            for label in self.predictLabels:
+                try:
+                    label.remove()
+                except Exception:
+                    pass
+            self.predictLabels = []
+            
+            # Crear los nuevos textos de velocidad
+            for predicts in range(0, len(self.predictPoints_x)):
+                if predicts < len(self.objectsVel):
+                    vel_texto = f"{self.objectsVel[predicts].round(2)}m/s"
+                else:
+                    vel_texto = "0.0m/s"
+                
+                txt_obj = self.axRad.text(
+                    self.predictPoints_x[predicts], 
+                    self.predictPoints_y[predicts], 
+                    vel_texto, 
+                    fontsize=10, 
+                    color="red", 
+                    zorder=5
+                )
+                self.predictLabels.append(txt_obj)
+                
             self.canvasRad.draw_idle()
 
-
-            #Gráfico cartesiano
-
-            #Borrar datos del grafico cartesiano antes de actualizarlo
+            # Gráfico cartesiano
             self.axCart.cla()
-            #Reconfigurar el gráfico después de limpiarlo
             self.axCart.grid(color="green")
             self.axCart.set_facecolor('black')
             self.axCart.set_xlabel('Posición (x)', color='green')
@@ -373,18 +393,18 @@ class Radar:
             self.axCart.tick_params('both', colors='green')
             self.axCart.set_title('Predicción Parabólica', color='green')
 
-            #Graficar la parábola y los puntos de detección
             self.axCart.plot(self.axCartX, self.axCartY, color='green')
             self.axCart.scatter(
                 [self.axCartPos1[0], self.axCartPos2[0]],
                 [self.axCartPos1[1], self.axCartPos2[1]],
                 color='red',
-                zorder=5)
+                zorder=5
+            )
             
             self.canvasCart.draw_idle()
             
-        except:
-            pass
+        except Exception as e:
+            print(f"Error en update_plot: {e}")
     
     # Actualizar el contador
     def update_time_display(self):
@@ -395,6 +415,7 @@ class Radar:
             if self.counting:
                 elapsed = time.time() - self.time_start
                 self.time_text.set_text(f"t = {elapsed:.3f}s")
+                self.barrido_text.set_text(f"Barrido: #{self.barrido_actual}")
                 self.canvasRad.draw_idle()
                 
                 # Revisar si se ha excedido el tiempo
@@ -503,6 +524,8 @@ class Radar:
         los puntos calculados corresponden al orden de ambos barridos, si
         alguna de ambas listas se excede, no se mostrara una prediccion"""
 
+        self.objectsVel = []
+
         if self.objects_pos0 == []:
             return
         
@@ -527,6 +550,8 @@ class Radar:
             difTem = pos1[2] - pos0[2]
 
             objVel = difDist/difTem
+            
+            self.objectsVel.append(objVel)
 
             # Predicción de coordenada cartesiana
             # Busca un punto en la misma cantidad de tiempo entre pos0 y pos1, por lo que se cancelan los tiempos

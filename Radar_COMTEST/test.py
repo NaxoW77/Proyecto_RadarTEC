@@ -12,7 +12,23 @@ config = config.Config
 SERIAL_PORT = config.test_port_write
 BAUD_RATE = config.serial_baudrate
 
+# Datos manuales y automáticos
+barridos = [0,1]
+barrido_actual = 0
+
+coordenadas_manuales = [
+    # Primer punto en 40cm 30°
+    [30, 20, 0], # [Distancia, Angulo, Barrido]
+    [30, 40, 0],
+    
+    # Segundo punto en 40cm 90°
+    [30, 80, 1],
+    [30, 100, 1],
+]
+
 def loop():
+    
+    global barrido_actual
     try:
         # Abrimos el puerto simulado
         ser = serial.Serial(
@@ -38,7 +54,14 @@ def loop():
             while step <= 180:
                 time.sleep(0.05) # delay(50) del movimiento del servo
 
-                distancia = random.randint(10, 45) # Distancia aleatoria
+                distancia = 100 # Distancia nula
+                
+                for posiciones in coordenadas_manuales:
+                    if posiciones[2] == barrido_actual:
+                        if posiciones[1] == step:
+                            distancia = posiciones[0]
+                            break
+                
                 cadena_datos = f"Distance: {distancia} cm | Angle: {step}\n"
                 
                 # Mensaje por el puerto
@@ -47,11 +70,12 @@ def loop():
 
                     print(f"Enviando: {cadena_datos.strip()}")
                 except serial.SerialTimeoutException:
-                    print(f"Buffer lleno en paso {step}° (¿Está la GUI abierta?)")
+                    print(f"Buffer lleno: {step}°")
 
                 # Delay antes de avanzar al siguiente paso
                 time.sleep(0.25) 
                 step += 20
+                
 
             # Señal de fin de barrido
             print("Enviando: Time: 1s")
@@ -59,6 +83,10 @@ def loop():
                 ser.write(b"Time: 1s\n")
             except serial.SerialTimeoutException:
                 pass
+            
+            barrido_actual+=1
+            if barrido_actual > barridos[-1]:
+                    barrido_actual = barridos[0]
             
             # Delay del reinicio del servo en el Arduino real
             time.sleep(0.30) 
