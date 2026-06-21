@@ -76,15 +76,9 @@ class Radar:
             
         self.axRad.text(-np.pi/2, 2, '0', ha='center', va='top', color='green', fontsize=9)
         
-<<<<<<< HEAD
         self.line, = self.axRad.plot([], [], 'o', markersize=7, color='#ff0000')
         self.object, = self.axRad.plot([], [], 's', markersize=10, color='#00ff00')
         self.predict, = self.axRad.plot([], [], 'D', markersize=7, color='#0000ff')
-=======
-        self.line, = self.axRad.plot([], [], 'ro', markersize=7)
-        self.object, = self.axRad.plot([], [], 'go', markersize=7)
-        self.predict, = self.axRad.plot([], [], 'bo', markersize=7)
->>>>>>> 3522687f8da88acdfd4246c920fbff76076870ac
         
         # Variables de tiempo
         self.time = 0
