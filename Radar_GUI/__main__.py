@@ -91,6 +91,9 @@ class Radar:
         self.object, = self.axRad.plot([], [], 's', markersize=10, color='#00ff00')
         self.predict, = self.axRad.plot([], [], 'D', markersize=7, color='#0000ff')
         
+        # Variables globales
+        self.objetos_detectados = []
+        
         # Variables de tiempo
         self.time = 0
         self.time_start = time.time()
@@ -180,17 +183,35 @@ class Radar:
 
 
         ### Puntos de prueba, objeto que se mueve cada 40° a 40cm
-        #self.points_x = [(np.pi - np.deg2rad(30)), (np.pi - np.deg2rad(50)), (np.pi - np.deg2rad(70)), (np.pi - np.deg2rad(90))]
-        #self.points_y = [40, 40, 40, 40]
-
-        #self.objectsPos_x = [(np.pi - np.deg2rad(80)), (np.pi - np.deg2rad(40))]
-        #self.objectsPos_y = [40, 40]
         
-        #self.predictPoints_x = [(np.pi - np.deg2rad(120))]
-        #self.predictPoints_y = [40]
-    
-    
-    
+        if 1 == 1:
+            self.objetos_detectados.append(Objeto(40, 40, 1.360))
+            
+            self.objetos_detectados[0].posicion_anterior = self.objetos_detectados[0].posicion_actual
+            
+            self.objetos_detectados[0].posicion_actual = Posicion(40, 80, 2.480)
+            
+            self.objetos_detectados[0].calcular_velocidad()
+            
+            self.objetos_detectados[0].calcular_prediccion()
+            
+            
+            self.points_x = [(np.pi - np.deg2rad(30)), (np.pi - np.deg2rad(50)), (np.pi - np.deg2rad(70)), (np.pi - np.deg2rad(90))]
+            self.points_y = [40, 40, 40, 40]
+
+            self.objectsPos_x = [(np.pi - np.deg2rad(80)), (np.pi - np.deg2rad(40))]
+            self.objectsPos_y = [40, 40]
+        
+            self.predictPoints_x = [(np.pi - np.deg2rad(120))]
+            self.predictPoints_y = [40]
+        
+            self.objectsVel = []
+        
+            self.time_text.set_text("t = 2.480s")
+            self.barrido_text.set_text("Barrido: #2")
+        
+
+        
         self.update_plot()
 
         # Hilo para la comunicación serial
@@ -264,7 +285,6 @@ class Radar:
                             self.objects_pos0 = self.objects_pos1
                             self.objects_pos1 = []
 
-                            # CAMBIO AQUÍ: Se programa la actualización en el hilo principal
                             self.root.after(0, self.update_plot)
                     
                     # Coincidencia de los datos
@@ -592,6 +612,43 @@ class Radar:
         self.running = False
         self.root.quit()
         self.root.destroy()
+
+# Clase para objetos
+class Objeto:
+    def __init__(self, distancia_inicial, rotacion_inicial, tiempo_inicial):
+        # Posiciones 
+        self.posicion_anterior = None
+        self.posicion_actual =  Posicion(distancia_inicial, rotacion_inicial, tiempo_inicial)
+        
+        # Calculados
+        self.velocidad = 0
+        self.prediccion = None
+        
+    def calcular_velocidad(self):
+        radio = ((self.posicion_actual.distancia/100)+(self.posicion_anterior.distancia/100))/2
+        
+        intervalo = self.posicion_actual.tiempo - self.posicion_anterior.tiempo
+        
+        self.velocidad = (radio*3.1416)/self.posicion_actual.tiempo
+        
+        velocidad = (np.deg2rad(radio* (self.posicion_actual.rotacion - self.posicion_anterior.rotacion))/intervalo).round(2)
+        print(velocidad)
+    
+    def calcular_prediccion(self):
+        nueva_distancia = self.posicion_actual.distancia + (self.posicion_actual.distancia - self.posicion_anterior.distancia)
+        
+        nueva_rotacion = self.posicion_actual.rotacion + (self.posicion_actual.rotacion - self.posicion_anterior.rotacion)
+        
+        print(nueva_distancia, nueva_rotacion)
+        
+        
+        
+# Clase para posiciones
+class Posicion:
+    def __init__(self, distancia, rotacion, tiempo):
+        self.distancia = distancia
+        self.rotacion = rotacion
+        self.tiempo = tiempo
 
 # Clase principal
 if __name__ == "__main__":
