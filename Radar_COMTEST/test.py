@@ -14,8 +14,32 @@ BAUD_RATE = config.serial_baudrate
 
 # Datos manuales y automáticos
 
-# Puntos cruzandose
+# Punto único en una dirección
 coordenadas_manuales = [
+    # Primer punto en 45cm 20°
+    [45, 20, 0], # [Distancia, Angulo, Barrido]
+    
+    # Segundo punto en 40cm 60°
+    [30, 40, 1],
+    [40, 60, 1],
+    [50, 80, 1],
+    
+    # Tercer punto en 35cm 100°
+    [30, 80, 2],
+    [35, 100, 2],
+    [40, 120, 2],
+    
+    # Cuarto punto en 30cm 140°
+    [20, 120, 3],
+    [30, 140, 3],
+    [40, 160, 3],
+    
+    # Quinto punto en 25cm 180°
+    [25, 180, 4]
+]
+
+# Dos puntos cruzandose entre sí
+coordenadas_manuales0 = [
     # Primer punto en 45cm 20°
     [45, 20, 0], # [Distancia, Angulo, Barrido]
     
