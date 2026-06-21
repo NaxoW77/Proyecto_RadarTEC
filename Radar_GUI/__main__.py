@@ -76,9 +76,9 @@ class Radar:
             
         self.axRad.text(-np.pi/2, 2, '0', ha='center', va='top', color='green', fontsize=9)
         
-        self.line, = self.axRad.plot([], [], 'ro', markersize=5)
-        self.object, = self.axRad.plot([], [], 'go', markersize=5)
-        self.predict, = self.axRad.plot([], [], 'bo', markersize=5)
+        self.line, = self.axRad.plot([], [], 'ro', markersize=7)
+        self.object, = self.axRad.plot([], [], 'go', markersize=7)
+        self.predict, = self.axRad.plot([], [], 'bo', markersize=7)
         
         # Variables de tiempo
         self.time = 0
@@ -208,11 +208,11 @@ class Radar:
                             
                         elif self.time == 1:
                             # Detener el contador
-
-
                             self.counting = False
                             self.points_x = []
                             self.points_y = []
+                            self.objectsPos_x = []
+                            self.objectsPos_y = []
                             self.predictPoints_x = []
                             self.predictPoints_y = []
                             
@@ -223,7 +223,10 @@ class Radar:
                             self.points_dist = []
                             self.points_time = []
 
-                            self.prediction()
+                            self.prediction()                            
+
+                            
+                            
 
                             self.objects_pos0 = self.objects_pos1
                             self.objects_pos1 = []
@@ -469,13 +472,14 @@ class Radar:
         
     
     def prediction(self):
-        """Prepara los puntos de dos barridos para predecir mediante MRU, los almacena en self.predictPoints"""
+        """Prepara los puntos de dos barridos para predecir mediante MRU
+        los puntos calculados corresponden al orden de ambos barridos, si
+        alguna de ambas listas se excede, no se mostrara una prediccion"""
 
         if self.objects_pos0 == []:
             return
         
-        print(self.objects_pos0)
-        print(self.objects_pos1)
+        
 
         for i in range(len(self.objects_pos0)):
             if len(self.objects_pos1) <= i:
@@ -485,11 +489,11 @@ class Radar:
             pos1 = self.objects_pos1[i]
 
             # Definición y corrección de cartesianas
-            x1 = pos0[1]*np.cos(180-pos0[0])
-            x2 = pos1[1]*np.cos(180-pos1[0])
+            x1 = pos0[1]*np.cos(np.deg2rad(180-pos0[0]))
+            x2 = pos1[1]*np.cos(np.deg2rad(180-pos1[0]))
 
-            y1 = pos0[1]*np.sin(180-pos0[0])
-            y2 = pos1[1]*np.sin(180-pos1[0])
+            y1 = pos0[1]*np.sin(np.deg2rad(180-pos0[0]))
+            y2 = pos1[1]*np.sin(np.deg2rad(180-pos1[0]))
 
             # Cálculo de velocidad del objeto
             difDist = np.sqrt((x2-x1)**2 + (y2-y1)**2)
@@ -500,21 +504,28 @@ class Radar:
             # Predicción de coordenada cartesiana
             # Busca un punto en la misma cantidad de tiempo entre pos0 y pos1, por lo que se cancelan los tiempos
 
-            x3 = 2*x2 - x1
-            y3 = 2*y2 - y1
+            x3 = (2*x2) - x1
+            y3 = (2*y2) - y1
 
             # Conversión de x3 y y3 a coordenadas polares
             dist = np.sqrt(x3**2 + y3**2)
             angle = np.rad2deg(np.atan2(y3, x3))
 
-            # Mantener una distancia maxima de 50
+            # Controlar distancia excedida
             if dist > 50:
                 dist = 50
             
-            # Conversión al formato polar de la GUI
+            # Controlar ángulos excedidos
+            if 180-angle <= 0:
+                angle = 0
+            if 180-angle >= 180:
+                angle = 180
 
-            rad = np.pi - np.deg2rad(angle)
-            self.predictPoints_x.append(rad)
+
+            
+            # Agregar puntos a listas de predicción
+            radAngle = np.pi - np.deg2rad(angle)
+            self.predictPoints_x.append(radAngle)
             self.predictPoints_y.append(dist)
 
         
