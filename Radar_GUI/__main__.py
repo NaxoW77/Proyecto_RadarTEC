@@ -143,13 +143,12 @@ class Radar:
         self.axCartPos1 = (0, 0)
         self.axCartPos2 = (0, 0)
         self.axCartX = np.arange(-50, 50, 0.01)
-        self.axCartY = (1*self.axCartX**2) + (1*self.axCartX) +1 #Forma cuadrática
+        self.axCartY = self.axCartX
 
         self.canvasCart = FigureCanvasTkAgg(self.figCart, master=root)
         self.canvasCart.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
         self.figCart.set_facecolor("black")
         self.axCart.plot(self.axCartX, self.axCartY, color='green')
-        self.axCart.set_ylim(0,20)
         self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
 
         # Hilo para la comunicación serial
@@ -267,7 +266,7 @@ class Radar:
                             self.objectsPos_x = objPos_x
                             self.objectsPos_y = objPos_y
                                 
-
+                            
                             
 
                             if len(self.objects_pos1) > 1:
@@ -277,9 +276,12 @@ class Radar:
                                 objDist1 = self.objects_pos1[-1][1]
                                 objAng1 = self.objects_pos1[-1][0]
 
-                                objTime = self.objects_pos1[-2][2] - self.objects_pos1[-1][2]
+                                objTime = self.objects_pos1[-1][2] - self.objects_pos1[-2][2]
 
                                 self.parable((objDist0, objAng0), (objDist1, objAng1), objTime)
+                                print()
+                                print(self.axCartPos1)
+                                print(self.axCartPos2)
 
                             self.update_plot()
                             
@@ -331,6 +333,7 @@ class Radar:
             
             self.canvasRad.draw_idle()
 
+
             #Gráfico cartesiano
 
             #Borrar datos del grafico cartesiano antes de actualizarlo
@@ -345,16 +348,13 @@ class Radar:
 
             #Graficar la parábola y los puntos de detección
             self.axCart.plot(self.axCartX, self.axCartY, color='green')
-            self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
-            #Visualizar el gráfico con límites dinámicos según los puntos detectados
-            #self.axCart.set_ylim(0, max(self.axCartPos1[1], self.axCartPos2[1]) + 5)
-            #self.axCart.set_xlim(0, max(self.axCartPos1[0], self.axCartPos2[0]) + 5)
+            self.axCart.scatter(
+                [self.axCartPos1[0], self.axCartPos2[0]],
+                [self.axCartPos1[1], self.axCartPos2[1]],
+                color='red',
+                zorder=5)
             
             self.canvasCart.draw_idle()
-
-            # self.axCart.plot(self.axCartX, self.axCartY, color='green')
-            # self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
-            # self.canvasCart.draw_idle()
             
         except:
             pass
@@ -393,11 +393,11 @@ class Radar:
         #Transformar las coordenadas polares en cartesianas, y asignar cada valor 'x' y 'y'
         #por separado
 
-        x1 = pol1[0]*np.cos(180-pol1[1])
-        x2 = pol2[0]*np.cos(180-pol2[1])
+        x1 = round(pol1[0]*np.cos(np.deg2rad(180-pol1[1])), 2)
+        x2 = round(pol2[0]*np.cos(np.deg2rad(180-pol2[1])), 2)
 
-        y1 = pol1[0]*np.sin(180-pol1[1])
-        y2 = pol2[0]*np.sin(180-pol2[1])
+        y1 = round(pol1[0]*np.sin(np.deg2rad(180-pol1[1])), 2)
+        y2 = round(pol2[0]*np.sin(np.deg2rad(180-pol2[1])), 2)
         
         #Calcular coeficientes de la variable independiente
 
@@ -413,8 +413,8 @@ class Radar:
         rangeX = np.arange(x_min, x_max, 0.01)
 
         #Cambiar variables del gráfico
+        self.axCartX = rangeX
         self.axCartY = (a*rangeX**2) + (b*rangeX) + c
-
         self.axCartPos1 = (x1, y1)
         self.axCartPos2 = (x2, y2)
 
