@@ -182,38 +182,6 @@ class Radar:
         self.figCart.set_facecolor("black")
         self.axCart.plot(self.axCartX, self.axCartY, color='green')
         self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
-
-
-
-        ### Puntos de prueba, objeto que se mueve cada 40° a 40cm
-        
-        if 1 == 0:
-            self.objetos_detectados.append(Objeto(40, 40, 1.360))
-            
-            self.objetos_detectados[0].posicion_anterior = self.objetos_detectados[0].posicion_actual
-            
-            self.objetos_detectados[0].posicion_actual = Posicion(40, 80, 2.480)
-            
-            self.objetos_detectados[0].calcular_velocidad()
-            
-            self.objetos_detectados[0].calcular_prediccion()
-            
-            
-            self.points_x = [(np.pi - np.deg2rad(30)), (np.pi - np.deg2rad(50)), (np.pi - np.deg2rad(70)), (np.pi - np.deg2rad(90))]
-            self.points_y = [40, 40, 40, 40]
-
-            self.objectsPos_x = [(np.pi - np.deg2rad(80)), (np.pi - np.deg2rad(40))]
-            self.objectsPos_y = [40, 40]
-        
-            self.predictPoints_x = [(np.pi - np.deg2rad(120))]
-            self.predictPoints_y = [40]
-        
-            self.objectsVel = []
-        
-            self.time_text.set_text("t = 2.480s")
-            self.barrido_text.set_text("Barrido: #2")
-        
-
         
         self.update_plot()
 
