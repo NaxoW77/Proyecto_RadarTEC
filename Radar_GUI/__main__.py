@@ -29,9 +29,20 @@ from threading import Thread
 import numpy as np
 import time
 
+# Archivo de configuración
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from Config import config
+config = config.Config
+
 # Configuración de la comunicación serial
-SERIAL_PORT = 'COM5' 
-BAUD_RATE = 9600
+SERIAL_PORT = config.serial_port
+
+# Si se prueba, utilizar puertos virtuales
+if config.testing == True:
+    SERIAL_PORT = config.test_port_read
+BAUD_RATE = config.serial_baudrate
 
 # Clase principal
 class Radar:

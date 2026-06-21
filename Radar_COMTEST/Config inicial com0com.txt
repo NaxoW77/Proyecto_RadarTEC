@@ -1,0 +1,2 @@
+change CNCA0 PortName=COM10
+change CNCB0 PortName=COM11
