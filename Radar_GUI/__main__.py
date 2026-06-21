@@ -76,9 +76,9 @@ class Radar:
             
         self.axRad.text(-np.pi/2, 2, '0', ha='center', va='top', color='green', fontsize=9)
         
-        self.line, = self.axRad.plot([], [], 'ro', markersize=5)
-        self.object, = self.axRad.plot([], [], 'go', markersize=5)
-        self.predict, = self.axRad.plot([], [], 'bo', markersize=5)
+        self.line, = self.axRad.plot([], [], 'o', markersize=7, color='#ff0000')
+        self.object, = self.axRad.plot([], [], 's', markersize=10, color='#00ff00')
+        self.predict, = self.axRad.plot([], [], 'D', markersize=7, color='#0000ff')
         
         # Variables de tiempo
         self.time = 0
@@ -151,6 +151,22 @@ class Radar:
         self.axCart.plot(self.axCartX, self.axCartY, color='green')
         self.axCart.set_ylim(0,20)
         self.axCart.scatter(self.axCartPos1, self.axCartPos2, color='red', zorder=5)
+
+
+
+        ### Puntos de prueba, objeto que se mueve cada 40° a 40cm
+        #self.points_x = [(np.pi - np.deg2rad(30)), (np.pi - np.deg2rad(50)), (np.pi - np.deg2rad(70)), (np.pi - np.deg2rad(90))]
+        #self.points_y = [40, 40, 40, 40]
+
+        #self.objectsPos_x = [(np.pi - np.deg2rad(80)), (np.pi - np.deg2rad(40))]
+        #self.objectsPos_y = [40, 40]
+        
+        #self.predictPoints_x = [(np.pi - np.deg2rad(120))]
+        #self.predictPoints_y = [40]
+    
+    
+    
+        self.update_plot()
 
         # Hilo para la comunicación serial
         self.running = True
