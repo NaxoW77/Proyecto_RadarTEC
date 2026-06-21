@@ -13,18 +13,35 @@ SERIAL_PORT = config.test_port_write
 BAUD_RATE = config.serial_baudrate
 
 # Datos manuales y automáticos
-barridos = [0,1]
-barrido_actual = 0
 
+# Puntos cruzandose
 coordenadas_manuales = [
-    # Primer punto en 40cm 30°
-    [30, 20, 0], # [Distancia, Angulo, Barrido]
-    [30, 40, 0],
+    # Primer punto en 45cm 20°
+    [45, 20, 0], # [Distancia, Angulo, Barrido]
     
-    # Segundo punto en 40cm 90°
-    [30, 80, 1],
-    [30, 100, 1],
+    [20, 180, 0],
+    
+    # Segundo punto en 40cm 60°
+    [40, 60, 1],
+    
+    [25, 100, 1],
+    
+    # Tercer punto en 35cm 100°
+    [35, 100, 2],
+    
+    [30, 20, 2],
+    
+    # Cuarto punto en 30cm 140°
+    [20, 120, 3],
+    [30, 140, 3],
+    [40, 160, 3],
+    
+    # Quinto punto en 25cm 180°
+    [25, 180, 4]
 ]
+
+barridos = [0,coordenadas_manuales[-1][-1]]
+barrido_actual = 0
 
 def loop():
     
@@ -41,6 +58,7 @@ def loop():
         )
 
         while True:
+            print("Barrido:", barrido_actual)
             # Señal de inicio de barrido
             print("Enviando: Time: 0s")
             try:
@@ -88,8 +106,8 @@ def loop():
             if barrido_actual > barridos[-1]:
                     barrido_actual = barridos[0]
             
-            # Delay del reinicio del servo en el Arduino real
-            time.sleep(0.30) 
+            # Delay del reinicio
+            time.sleep(3) 
 
     except serial.SerialException as e:
         print(f"\nError de comunicación: {e}")

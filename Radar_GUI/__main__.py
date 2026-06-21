@@ -29,6 +29,9 @@ from threading import Thread
 import numpy as np
 import time
 
+#
+import logging
+
 # Archivo de configuración
 import sys
 from pathlib import Path
@@ -87,9 +90,9 @@ class Radar:
             
         self.axRad.text(-np.pi/2, 2, '0', ha='center', va='top', color='green', fontsize=9)
         
-        self.line, = self.axRad.plot([], [], 'o', markersize=7, color='#ff0000')
         self.object, = self.axRad.plot([], [], 's', markersize=10, color='#00ff00')
         self.predict, = self.axRad.plot([], [], 'D', markersize=7, color='#0000ff')
+        self.line, = self.axRad.plot([], [], 'o', markersize=7, color='#ff0000')
         
         # Variables globales
         self.objetos_detectados = []
@@ -184,7 +187,7 @@ class Radar:
 
         ### Puntos de prueba, objeto que se mueve cada 40° a 40cm
         
-        if 1 == 1:
+        if 1 == 0:
             self.objetos_detectados.append(Objeto(40, 40, 1.360))
             
             self.objetos_detectados[0].posicion_anterior = self.objetos_detectados[0].posicion_actual
@@ -264,6 +267,49 @@ class Radar:
                             self.time_start = time.time()
                             
                         elif self.time == 1:
+                            
+                            elementos_act = []
+                            elementos_disp = self.objects_pos1.copy()
+
+                            for obj_ref in self.objetos_detectados:
+                                if not elementos_disp:
+                                    break
+
+                                dif_min = float('inf')
+                                idx_min = -1
+
+                                for idx, val_obj in enumerate(elementos_disp):
+                                    ang_act = val_obj[0]
+                                    dist_act = val_obj[1]
+
+                                    if obj_ref.prediccion is not None:
+                                        ang_ref = obj_ref.prediccion.rotacion
+                                        dist_ref = obj_ref.prediccion.distancia
+                                    else:
+                                        ang_ref = obj_ref.posicion_actual.rotacion
+                                        dist_ref = obj_ref.posicion_actual.distancia
+
+                                    rad1 = np.deg2rad(ang_ref)
+                                    rad2 = np.deg2rad(ang_act)
+                                    dif_calc = np.sqrt(dist_ref**2 + dist_act**2 - 2 * dist_ref * dist_act * np.cos(rad1 - rad2))
+
+                                    if dif_calc < 30:
+                                        if dif_calc < dif_min:
+                                            dif_min = dif_calc
+                                            idx_min = idx
+
+                                if idx_min != -1:
+                                    item_sel = elementos_disp.pop(idx_min)
+                                    obj_ref.actualizar_posicion(item_sel[1], item_sel[0], item_sel[2])
+                                    obj_ref.calcular_velocidad()
+                                    obj_ref.calcular_prediccion()
+                                    elementos_act.append(obj_ref)
+
+                            for rem in elementos_disp:
+                                elementos_act.append(Objeto(rem[1], rem[0], rem[2]))
+
+                            self.objetos_detectados = elementos_act
+                            
                             # Detener el contador
                             self.counting = False
                             self.points_x = []
@@ -335,6 +381,8 @@ class Radar:
             # En caso de error
             except Exception as e:
                 print(f"Error en read_serial: {e}")
+                logging.exception(f"Error en read_serial: {e}")
+                
                 def handle_error():
                     self.error_text.set_text(f"Error: El puerto serial dejó de responder.")
                     self.canvasRad.draw_idle()
@@ -366,6 +414,8 @@ class Radar:
         self.objectsPos_y = []
         self.predictPoints_x = []
         self.predictPoints_y = []
+        self.objetos_detectados = []
+        
         self.time_text.set_text("Error: Tiempo agotado")
         self.update_plot()
 
@@ -373,11 +423,8 @@ class Radar:
     def update_plot(self):
         try:
             # Gráfico polar
-            self.line.set_data(self.points_x, self.points_y)
-            self.object.set_data(self.objectsPos_x, self.objectsPos_y)
-            self.predict.set_data(self.predictPoints_x, self.predictPoints_y)
             
-            # Eliminar textos antiguos de forma segura en el hilo principal
+            # Eliminar textos antiguos de forma segura
             for label in self.predictLabels:
                 try:
                     label.remove()
@@ -385,22 +432,43 @@ class Radar:
                     pass
             self.predictLabels = []
             
-            # Crear los nuevos textos de velocidad
-            for predicts in range(0, len(self.predictPoints_x)):
-                if predicts < len(self.objectsVel):
-                    vel_texto = f"{self.objectsVel[predicts].round(2)}m/s"
-                else:
-                    vel_texto = "0.0m/s"
+            polPosX = []
+            polPosY = []
+            polPredX = []
+            polPredY = []
+            
+            for obj in self.objetos_detectados:
+                if obj.posicion_actual is not None:
+                    polPosX.append(np.pi - np.deg2rad(obj.posicion_actual.rotacion))
+                    polPosY.append(obj.posicion_actual.distancia)
                 
-                txt_obj = self.axRad.text(
-                    self.predictPoints_x[predicts], 
-                    self.predictPoints_y[predicts], 
-                    vel_texto, 
-                    fontsize=10, 
-                    color="red", 
-                    zorder=5
-                )
-                self.predictLabels.append(txt_obj)
+                if obj.prediccion is not None:
+                    if obj.prediccion.distancia < 0:
+                        obj.prediccion.distancia = 0
+                    if obj.prediccion.distancia > 50:
+                        obj.prediccion.distancia = 50
+                    if obj.prediccion.rotacion < 0:
+                        obj.prediccion.rotacion = 0
+                    if obj.prediccion.rotacion > 180:
+                        obj.prediccion.rotacion = 180
+                    
+                    polPredX.append(np.pi - np.deg2rad(obj.prediccion.rotacion))
+                    polPredY.append(obj.prediccion.distancia)
+                
+                    txt_obj = self.axRad.text(
+                        np.pi - np.deg2rad(obj.posicion_actual.rotacion), 
+                        obj.posicion_actual.distancia, 
+                        f"{obj.velocidad}m/s", 
+                        fontsize=10, 
+                        color="red", 
+                        zorder=5
+                    )
+                    
+                    self.predictLabels.append(txt_obj)
+                
+            self.object.set_data(polPosX, polPosY)
+            self.predict.set_data(polPredX, polPredY)
+            self.line.set_data(self.points_x, self.points_y)
                 
             self.canvasRad.draw_idle()
 
@@ -486,6 +554,7 @@ class Radar:
         self.axCartPos1 = (x1, y1)
         self.axCartPos2 = (x2, y2)
 
+    # Función para calcular las posiciones promediadas
     def calcObject(self):
         # Lista para almacenar los objetos detectados
         pointData = []
@@ -615,32 +684,51 @@ class Radar:
 
 # Clase para objetos
 class Objeto:
-    def __init__(self, distancia_inicial, rotacion_inicial, tiempo_inicial):
-        # Posiciones 
+    def __init__(self, val_a, val_b, val_c):
         self.posicion_anterior = None
-        self.posicion_actual =  Posicion(distancia_inicial, rotacion_inicial, tiempo_inicial)
-        
-        # Calculados
+        self.posicion_actual = Posicion(val_a, val_b, val_c)
         self.velocidad = 0
         self.prediccion = None
         
+    def actualizar_posicion(self, val_a, val_b, val_c):
+        self.posicion_anterior = self.posicion_actual
+        self.posicion_actual = Posicion(val_a, val_b, val_c)
+        
     def calcular_velocidad(self):
-        radio = ((self.posicion_actual.distancia/100)+(self.posicion_anterior.distancia/100))/2
+        if self.posicion_anterior is None:
+            return
         
-        intervalo = self.posicion_actual.tiempo - self.posicion_anterior.tiempo
+        dist_a = self.posicion_actual.distancia
+        rot_a = self.posicion_actual.rotacion
+        dist_b = self.posicion_anterior.distancia
+        rot_b = self.posicion_anterior.rotacion
         
-        self.velocidad = (radio*3.1416)/self.posicion_actual.tiempo
+        rad_a = np.deg2rad(rot_a)
+        rad_b = np.deg2rad(rot_b)
         
-        velocidad = (np.deg2rad(radio* (self.posicion_actual.rotacion - self.posicion_anterior.rotacion))/intervalo).round(2)
-        print(velocidad)
+        calc_dist = np.sqrt(dist_a**2 + dist_b**2 - 2 * dist_a * dist_b * np.cos(rad_a - rad_b))
+        calc_tiempo = self.posicion_actual.tiempo - self.posicion_anterior.tiempo
+        
+        self.velocidad = round((calc_dist / 100) / calc_tiempo, 2)
     
     def calcular_prediccion(self):
-        nueva_distancia = self.posicion_actual.distancia + (self.posicion_actual.distancia - self.posicion_anterior.distancia)
+        if self.posicion_anterior is None:
+            return
         
-        nueva_rotacion = self.posicion_actual.rotacion + (self.posicion_actual.rotacion - self.posicion_anterior.rotacion)
+        val_a = self.posicion_actual.distancia + (self.posicion_actual.distancia - self.posicion_anterior.distancia)
+        val_b = self.posicion_actual.rotacion + (self.posicion_actual.rotacion - self.posicion_anterior.rotacion)
+        val_c = self.posicion_actual.tiempo + (self.posicion_actual.tiempo - self.posicion_anterior.tiempo)
         
-        print(nueva_distancia, nueva_rotacion)
-        
+        if val_a < 0:
+            val_a = 0
+        if val_a > 50:
+            val_a = 50
+        if val_b < 0:
+            val_b = 0
+        if val_b > 180:
+            val_b = 180
+            
+        self.prediccion = Posicion(val_a, val_b, val_c)
         
         
 # Clase para posiciones
